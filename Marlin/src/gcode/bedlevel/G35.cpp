@@ -40,6 +40,10 @@
 #define DEBUG_OUT ENABLED(DEBUG_LEVELING_FEATURE)
 #include "../../core/debug_out.h"
 
+#if ENABLED(RTS_AVAILABLE)
+  #include "../../lcd/e3v2/creality/LCD_RTS.h"
+#endif
+
 //
 // Define tramming point names.
 //
@@ -141,6 +145,18 @@ void GcodeSuite::G35() {
       const int full_turns = trunc(adjust);
       const float decimal_part = adjust - float(full_turns);
       const int minutes = trunc(decimal_part * 60.0f);
+      char turns[4];
+      char mins[4];
+      itoa(ABS(full_turns), turns, 10);
+      itoa(ABS(minutes), mins, 10);
+
+      char str[24];
+      strcpy(str, (screw_thread & 1) == (adjust > 0) ? "CCW " : "CW ");
+      strcat(str, turns);
+      strcat(str, " turns  & ");
+      strcat(str, mins);
+      strcat(str, " mins");
+
 
       SERIAL_ECHOPGM("Turn ");
       SERIAL_ECHOPGM_P((char *)pgm_read_ptr(&tramming_point_name[i]));
@@ -148,7 +164,18 @@ void GcodeSuite::G35() {
       if (minutes) SERIAL_ECHOPGM(" and ", ABS(minutes), " minutes");
       if (ENABLED(REPORT_TRAMMING_MM)) SERIAL_ECHOPGM(" (", -diff, "mm)");
       SERIAL_EOL();
+
+      #if ENABLED(RTS_AVAILABLE)
+        unsigned long addr = AUTO_TRAM_1TEXT_VP + i * 24;
+        for(int j = 0; j < 24; j++)
+        {
+          rtscheck.RTS_SndData(0, addr + j);
+        }
+        rtscheck.RTS_SndData(str, addr);
+      #endif
     }
+
+    rtscheck.RTS_SndData(ExchangePageBase + 57, ExchangepageAddr);
   }
   else
     SERIAL_ECHOLNPGM("G35 aborted.");

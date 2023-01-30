@@ -22,6 +22,7 @@
 #pragma once
 
 #include "../../inc/MarlinConfigPre.h"
+#include "../../lcd/e3v2/creality/LCD_RTS.h"
 
 #if EITHER(RESTORE_LEVELING_AFTER_G28, ENABLE_LEVELING_AFTER_G28)
   #define CAN_SET_LEVELING_AFTER_G28 1
@@ -79,6 +80,8 @@ class TemporaryBedLevelingState {
      * Print calibration results for plotting or manual frame adjustment.
      */
     void print_2d_array(const uint8_t sx, const uint8_t sy, const uint8_t precision, const float *values);
+    // added for printing bed level grid to screen - John Carlson
+    void print_2d_array_for_screen(const uint8_t sx, const uint8_t sy, const uint8_t precision, const float *values);
 
   #endif
 

@@ -165,6 +165,19 @@ void LevelingBilinear::print_leveling_grid(const bed_mesh_t* _z_values /*= NULL*
     }
   #endif
 }
+// added for printing bed level grid to screen - John Carlson
+void LevelingBilinear::print_leveling_grid_screen(const bed_mesh_t* _z_values /*= NULL*/) {
+  // print internal grid(s) or just the one passed as a parameter
+  SERIAL_ECHOLNPGM("Bilinear Leveling Grid:");
+  print_2d_array_for_screen(GRID_MAX_POINTS_X, GRID_MAX_POINTS_Y, 3, _z_values ? *_z_values[0] : z_values[0]);
+
+  #if ENABLED(ABL_BILINEAR_SUBDIVISION)
+    if (!_z_values) {
+      SERIAL_ECHOLNPGM("Subdivided with CATMULL ROM Leveling Grid:");
+      print_2d_array(ABL_GRID_POINTS_VIRT_X, ABL_GRID_POINTS_VIRT_Y, 5, z_values_virt[0]);
+    }
+  #endif
+}
 
 #if ENABLED(ABL_BILINEAR_SUBDIVISION)
 

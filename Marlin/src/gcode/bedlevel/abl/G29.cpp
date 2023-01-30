@@ -33,6 +33,7 @@
 #include "../../../module/motion.h"
 #include "../../../module/planner.h"
 #include "../../../module/probe.h"
+#include "../../../module/settings.h"
 #include "../../queue.h"
 
 #if ENABLED(AUTO_BED_LEVELING_LINEAR)
@@ -50,6 +51,8 @@
   #include "../../../lcd/e3v2/creality/dwin.h"
 #elif ENABLED(DWIN_LCD_PROUI)
   #include "../../../lcd/e3v2/proui/dwin.h"
+#elif ENABLED(RTS_AVAILABLE)
+  #include "../../../lcd/e3v2/creality/LCD_RTS.h"
 #endif
 
 #if HAS_MULTI_HOTEND
@@ -78,7 +81,7 @@ static void pre_g29_return(const bool retry, const bool did) {
     TERN_(FULL_REPORT_TO_HOST_FEATURE, set_and_report_grblstate(M_IDLE, false));
   }
   if (did) {
-    TERN_(HAS_DWIN_E3V2_BASIC, DWIN_LevelingDone());
+    //TERN_(HAS_DWIN_E3V2_BASIC, DWIN_LevelingDone());
     TERN_(EXTENSIBLE_UI, ExtUI::onLevelingDone());
   }
 }
@@ -673,9 +676,11 @@ G29_TYPE GcodeSuite::G29() {
 
       bool zig = PR_OUTER_SIZE & 1;  // Always end at RIGHT and BACK_PROBE_BED_POSITION
 
+       uint8_t showcount = 0;
+
       // Outer loop is X with PROBE_Y_FIRST enabled
       // Outer loop is Y with PROBE_Y_FIRST disabled
-      for (PR_OUTER_VAR = 0; PR_OUTER_VAR < PR_OUTER_SIZE && !isnan(abl.measured_z); PR_OUTER_VAR++) {
+      for (PR_OUTER_VAR = 0, showcount = 0; PR_OUTER_VAR < PR_OUTER_SIZE && !isnan(abl.measured_z); PR_OUTER_VAR++) {
 
         int8_t inStart, inStop, inInc;
 
@@ -731,6 +736,16 @@ G29_TYPE GcodeSuite::G29() {
             const float z = abl.measured_z + abl.Z_offset;
             abl.z_values[abl.meshCount.x][abl.meshCount.y] = z;
             TERN_(EXTENSIBLE_UI, ExtUI::onMeshUpdate(abl.meshCount, z));
+            #if ENABLED(RTS_AVAILABLE)
+              if((showcount ++) < GRID_MAX_POINTS_X * GRID_MAX_POINTS_Y)
+              {
+                // added by john for new bed level point position display
+                if ((showcount) <  GRID_MAX_POINTS_X * GRID_MAX_POINTS_Y)
+                {
+                  rtscheck.RTS_SndData(showcount + 1, AUTO_BED_LEVEL_CUR_POINT_VP);
+                }
+              }
+            #endif
 
           #endif
 
@@ -952,6 +967,10 @@ G29_TYPE GcodeSuite::G29() {
   TERN_(HAS_MULTI_HOTEND, if (abl.tool_index != 0) tool_change(abl.tool_index));
 
   report_current_position();
+
+  #if ENABLED(RTS_AVAILABLE)
+    RTS_AutoBedLevelPage();
+  #endif
 
   G29_RETURN(isnan(abl.measured_z), true);
 }

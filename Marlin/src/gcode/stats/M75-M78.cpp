@@ -27,7 +27,13 @@
   #include "../../feature/host_actions.h"
 #endif
 
+#include "../../core/serial.h" // added to show output from here - John Carlson
+
 #include "../../MarlinCore.h" // for startOrResumeJob
+
+#if ENABLED(RTS_AVAILABLE)
+  #include "../../lcd/e3v2/creality/LCD_RTS.h"
+#endif
 
 #if ENABLED(DWIN_LCD_PROUI)
   #include "../../lcd/e3v2/proui/dwin.h"
@@ -47,7 +53,7 @@ void GcodeSuite::M75() {
  * M76: Pause print timer
  */
 void GcodeSuite::M76() {
-  TERN(DWIN_LCD_PROUI, ui.pause_print(), print_job_timer.pause());
+  print_job_timer.pause();
   TERN_(HOST_PAUSE_M76, hostui.pause());
 }
 
@@ -56,6 +62,9 @@ void GcodeSuite::M76() {
  */
 void GcodeSuite::M77() {
   print_job_timer.stop();
+  #if ENABLED(RTS_AVAILABLE)
+    rtscheck.RTS_SndData(ExchangePageBase + 9, ExchangepageAddr);
+  #endif
 }
 
 #if ENABLED(PRINTCOUNTER)

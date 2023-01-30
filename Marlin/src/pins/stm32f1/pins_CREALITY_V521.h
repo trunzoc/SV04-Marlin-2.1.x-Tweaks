@@ -77,6 +77,12 @@
   #define Z_MIN_PROBE_PIN                   PD12  // BLTouch IN
 #endif
 
+//#define X_MIN_PIN                           PD10  // X
+#define X_MAX_PIN                           PE15  // X2
+//#define Y_MIN_PIN                           PE0   // Y
+//#define Z_MIN_PIN                           PE1   // Z
+#define Z2_MIN_PIN                          PE2   // Z2
+
 //
 // Filament Runout Sensor
 //
