@@ -515,7 +515,13 @@ void GcodeSuite::G28() {
    * IDEX specific commands in it.
    */
   #if ENABLED(DUAL_X_CARRIAGE)
-
+    //SERIAL_ECHOLNPGM("dualXPrintingModeStatus: ", dualXPrintingModeStatus);
+    //SERIAL_ECHOLNPGM("save_dual_x_carriage_mode: ", save_dual_x_carriage_mode);
+    // added by John Carlson to fix single mode 2 for parking extruder 1 before printing.
+    if (save_dual_x_carriage_mode > 4) {
+      save_dual_x_carriage_mode = dualXPrintingModeStatus;
+    }
+    // end checking for correct dual x carage mode
     if (idex_is_duplicating()) {
 
       TERN_(IMPROVE_HOMING_RELIABILITY, saved_motion_state = begin_slow_homing());

@@ -157,7 +157,6 @@ void GcodeSuite::G35() {
       strcat(str, mins);
       strcat(str, " mins");
 
-
       SERIAL_ECHOPGM("Turn ");
       SERIAL_ECHOPGM_P((char *)pgm_read_ptr(&tramming_point_name[i]));
       SERIAL_ECHOPGM(" ", (screw_thread & 1) == (adjust > 0) ? "CCW" : "CW", " by ", ABS(full_turns), " turns");

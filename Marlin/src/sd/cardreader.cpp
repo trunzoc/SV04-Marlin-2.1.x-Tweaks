@@ -36,6 +36,8 @@
   #include "../lcd/e3v2/creality/dwin.h"
 #elif ENABLED(DWIN_LCD_PROUI)
   #include "../lcd/e3v2/proui/dwin.h"
+#elif ENABLED(RTS_AVAILABLE)
+  #include "../lcd/e3v2/creality/LCD_RTS.h"
 #endif
 
 #include "../module/planner.h"        // for synchronize
@@ -1302,6 +1304,15 @@ void CardReader::fileHasFinished() {
       startOrResumeFilePrinting();
       return;
     }
+    else
+    {
+      #if ENABLED(DUAL_X_CARRIAGE)
+        extruder_duplication_enabled = false;
+        dual_x_carriage_mode = DEFAULT_DUAL_X_CARRIAGE_MODE;
+        active_extruder = 0;
+      #endif
+      PoweroffContinue = false;
+    }
   #endif
 
   endFilePrintNow(TERN_(SD_RESORT, true));
@@ -1338,6 +1349,7 @@ void CardReader::fileHasFinished() {
     if (jobRecoverFileExists()) {
       recovery.init();
       removeFile(recovery.filename);
+      recovery.info.recovery_flag = false;
       #if ENABLED(DEBUG_POWER_LOSS_RECOVERY)
         SERIAL_ECHOPGM("Power-loss file delete");
         SERIAL_ECHOF(jobRecoverFileExists() ? F(" failed.\n") : F("d.\n"));

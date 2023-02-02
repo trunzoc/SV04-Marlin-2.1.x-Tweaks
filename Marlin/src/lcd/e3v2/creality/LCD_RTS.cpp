@@ -44,7 +44,8 @@
 float zprobe_zoffset;
 float last_zoffset = 0.0;
 
-const float manual_feedrate_mm_m[] = {50 * 60, 50 * 60, 4 * 60, 60};
+//const float manual_feedrate_mm_m[] = {50 * 60, 50 * 60, 4 * 60, 60};
+const float manual_feedrate_mm_m[] = {100 * 60, 50 * 60, 10 * 60, 120};  // added by John Carlson to speed up travels
 
 int startprogress = 0;
 float pause_z = 0;
@@ -91,7 +92,8 @@ unsigned char AutoHomeIconNum;
 RTSSHOW rtscheck;
 int Update_Time_Value = 0;
 
-int AutoHomeFirstPoint = 1;
+// added by John Carlson
+int AutoHomeFirstPoint = 0;
 
 bool PoweroffContinue = false;
 char commandbuf[30];
@@ -354,11 +356,10 @@ void RTSSHOW::RTS_Init()
     }
   #endif
   #if ENABLED(AUTO_BED_LEVELING_BILINEAR)
+    SERIAL_ECHOLNPGM("lets build and set bed mesh info");
     bool zig = false;
     int8_t inStart, inStop, inInc, showcount;
-    float mval;
     showcount = 0;
-    std::string meshval;
     //settings.load();
     for (int y = 0; y < GRID_MAX_POINTS_Y; y++)
     {
@@ -379,19 +380,15 @@ void RTSSHOW::RTS_Init()
       zig ^= true;
       for (int x = inStart; x != inStop; x += inInc)
       {
-        //RTS_SndData(LevelingBilinear::z_values[x][y] * 1000, AUTO_BED_LEVEL_1POINT_VP + showcount * 2);
+        SERIAL_ECHOLNPGM("value: ", bedlevel.z_values[x][y] * 1000);
+        RTS_SndData(bedlevel.z_values[x][y] * 1000, AUTO_BED_LEVEL_1POINT_VP + showcount * 2);
         showcount++;
-        // added for new Mesh View Page - John Carlson
-        mval = LevelingBilinear::z_values[x][y] * 1000;
-        meshval += printf("%f", mval);
-        meshval += "   ";
       }
-      meshval += "\n";
-      //SERIAL_ECHOLNPGM("meshval: ", meshval.c_str());
     }
-    RTS_SndData(printf("%s", meshval.c_str()), AUTO_BED_LEVEL_MESH_VP);
+    SERIAL_ECHOLNPGM("should have output the mesh");
     queue.enqueue_now_P(PSTR("M420 S1"));
   #endif
+
   last_zoffset = zprobe_zoffset = probe.offset.z;
   RTS_SndData(probe.offset.z * 100, AUTO_BED_LEVEL_ZOFFSET_VP);
   RTS_SndData((hotend_offset[1].x - X2_MAX_POS) * 100, TWO_EXTRUDER_HOTEND_XOFFSET_VP);
@@ -415,6 +412,15 @@ void RTSSHOW::RTS_Init()
   RTS_SndData(thermalManager.temp_hotend[1].celsius, HEAD1_CURRENT_TEMP_VP);
   RTS_SndData(thermalManager.temp_bed.celsius, BED_CURRENT_TEMP_VP);
 
+  // added by John Carlson
+  /***************transmit E-Steps to screen*******************/
+  RTS_SndData(planner.settings.axis_steps_per_mm[3], E0_SET_STEP_VP);
+  RTS_SndData(planner.settings.axis_steps_per_mm[4], E1_SET_STEP_VP);
+  RTS_SndData(planner.flow_percentage[0], E0_SET_FLOW_VP);
+  RTS_SndData(planner.flow_percentage[1], E1_SET_FLOW_VP);
+  RTS_SndData(thermalManager.fan_speed[0], E0_SET_FAN_VP);
+  RTS_SndData(thermalManager.fan_speed[1], E1_SET_FAN_VP);
+
   /***************transmit Fan speed to screen*****************/
   // turn off fans
   thermalManager.set_fan_speed(0, 0);
@@ -433,7 +439,7 @@ void RTSSHOW::RTS_Init()
   RTS_SndData(SOFTVERSION, PRINTER_VERSION_TEXT_VP);
   RTS_SndData(sizebuf, PRINTER_PRINTSIZE_TEXT_VP);
   RTS_SndData(CORP_WEBSITE, PRINTER_WEBSITE_TEXT_VP);
-  RTS_SndData(Screen_version, Screen_Version_VP);
+  //RTS_SndData(Screen_version, Screen_Version_VP);
   /**************************some info init*******************************/
   RTS_SndData(0, PRINT_PROCESS_ICON_VP);
   if(CardReader::flag.mounted)
@@ -725,6 +731,7 @@ void RTSSHOW::RTS_SDcard_Stop()
     thermalManager.disable_all_heaters();
   #endif
   print_job_timer.reset();
+
   thermalManager.setTargetHotend(0, 0);
   RTS_SndData(0, HEAD0_SET_TEMP_VP);
   thermalManager.setTargetHotend(0, 1);
@@ -742,11 +749,20 @@ void RTSSHOW::RTS_SDcard_Stop()
     #endif
   }
   #ifdef EVENT_GCODE_SD_ABORT
-    queue.inject_P(PSTR(EVENT_GCODE_SD_ABORT));
+    char abtcmd[21] = "";
+    queue.inject(PSTR(EVENT_GCODE_SD_ABORT));
+    queue.inject(PSTR("G90"));
+    sprintf_P(abtcmd, PSTR("G1 Y%i F300\nM84"), Y_BED_SIZE);
+    queue.inject(abtcmd);
+
+    //queue.inject_P(PSTR(EVENT_GCODE_SD_ABORT));
+    //queue.inject_P(PSTR(abtcmd));
   #endif
 
+  planner.finish_and_disable();
+
   // shut down the stepper motor.
-  //queue.enqueue_now_P(PSTR("M84"));
+  // queue.enqueue_now_P(PSTR("M84"));
   RTS_SndData(0, MOTOR_FREE_ICON_VP);
 
   RTS_SndData(0, PRINT_PROCESS_ICON_VP);
@@ -792,6 +808,10 @@ void RTSSHOW::RTS_HandleData()
     return;
   }
 
+  char cmd[MAX_CMD_SIZE+16];
+  char cmd2[MAX_CMD_SIZE+16];
+  char cmd3[MAX_CMD_SIZE+16];
+
   switch(Checkkey)
   {
     case MainPageKey:
@@ -825,6 +845,8 @@ void RTSSHOW::RTS_HandleData()
         RTS_SndData(0, PRINT_TIME_MIN_VP);
         RTS_SndData(0, PRINT_SURPLUS_TIME_HOUR_VP);
         RTS_SndData(0, PRINT_SURPLUS_TIME_MIN_VP);
+        RTS_SndData(0, E0_SET_FAN_VP);
+        RTS_SndData(0, E1_SET_FAN_VP);
 
         sd_printing_autopause = false;
         change_page_number = 1;
@@ -838,8 +860,6 @@ void RTSSHOW::RTS_HandleData()
       }
       else if(recdat.data[0] == 4)
       {
-        // add function to fill the mesh view page - John Carlson
-        RTS_SetMeshPage();
         RTS_SndData(ExchangePageBase + 21, ExchangepageAddr);
       }
       else if(recdat.data[0] == 5)
@@ -875,11 +895,13 @@ void RTSSHOW::RTS_HandleData()
         if (thermalManager.fan_speed[0])
         {
           RTS_SndData(1, HEAD0_FAN_ICON_VP);
+          RTS_SndData(0, E0_SET_FAN_VP);
           thermalManager.set_fan_speed(0, 0);
         }
         else
         {
           RTS_SndData(0, HEAD0_FAN_ICON_VP);
+          RTS_SndData(255, E0_SET_FAN_VP);
           thermalManager.set_fan_speed(0, 255);
         }
       }
@@ -888,11 +910,13 @@ void RTSSHOW::RTS_HandleData()
         if (thermalManager.fan_speed[1])
         {
           RTS_SndData(1, HEAD1_FAN_ICON_VP);
+          RTS_SndData(0, E1_SET_FAN_VP);
           thermalManager.set_fan_speed(1, 0);
         }
         else
         {
           RTS_SndData(0, HEAD1_FAN_ICON_VP);
+          RTS_SndData(255, E1_SET_FAN_VP);
           thermalManager.set_fan_speed(1, 255);
         }
       }
@@ -911,13 +935,13 @@ void RTSSHOW::RTS_HandleData()
         RTS_SndData(0, PRINT_TIME_MIN_VP);
         RTS_SndData(0, PRINT_SURPLUS_TIME_HOUR_VP);
         RTS_SndData(0, PRINT_SURPLUS_TIME_MIN_VP);
+        RTS_SndData(0, E0_SET_FAN_VP);
+        RTS_SndData(0, E1_SET_FAN_VP);
         RTS_SDcard_Stop();
-        // queue.enqueue_now_P(PSTR("M77"));
-        queue.inject_P(PSTR("M77")); // had to change to fix the M77 call as enqueue_now was not working - John Carlson
-        TERN_(HOST_PAUSE_M76, hostui.cancel());
         Update_Time_Value = 0;
         PrintFlag = 0;
-        
+        TERN_(HOST_PAUSE_M76, hostui.cancel());
+        queue.inject_P(PSTR("M77"));
       }
       else if(recdat.data[0] == 0xF0)
       {
@@ -953,13 +977,11 @@ void RTSSHOW::RTS_HandleData()
         sdcard_pause_check = false;
         PrintFlag = 1;
         change_page_number = 12;
-        //queue.enqueue_now_P(PSTR("M76"));
-        queue.inject_P(PSTR("M76")); // had to change to fix the M77 call as enqueue_now was not working - John Carlson
+        queue.inject_P(PSTR("M76"));
       }
       break;
 
     case ResumePrintKey:
-      queue.enqueue_now_P(PSTR("M117 Resuming..."));
       #if BOTH(M600_PURGE_MORE_RESUMABLE, ADVANCED_PAUSE_FEATURE)
         pause_menu_response = PAUSE_RESPONSE_RESUME_PRINT;  // Simulate menu selection
       #endif
@@ -981,13 +1003,11 @@ void RTSSHOW::RTS_HandleData()
       {
         //change filament and resume
         RTS_SndData(ExchangePageBase + 40, ExchangepageAddr);
-        //card.startOrResumeFilePrinting();
         Update_Time_Value = 0;
         pause_action_flag = false;
         sdcard_pause_check = true;
         PrintFlag = 2;
         RTS_SndData(ExchangePageBase + 11, ExchangepageAddr);
-        queue.enqueue_now_P(PSTR("M75"));
         TERN_(HOST_PAUSE_M76, hostui.resume());
       }
       else if(recdat.data[0] == 3)
@@ -1218,6 +1238,69 @@ void RTSSHOW::RTS_HandleData()
       Filament1LOAD = ((float)recdat.data[0]) / 10;
       break;
 
+    // added by John Carlson for updating e-steps
+    case E0StepsKey:
+      //char cmd[MAX_CMD_SIZE+16];
+      sprintf_P(cmd, PSTR("M92 E%d T0"), recdat.data[0]);
+      queue.enqueue_now_P(cmd);
+      queue.enqueue_now_P(PSTR("M500"));
+      RTS_SndData(StartSoundSet, SoundAddr);
+      RTS_SndData(recdat.data[0], E0_SET_STEP_VP);
+      break;
+
+    case E1StepsKey:
+        sprintf_P(cmd, PSTR("M92 E%d T1"), recdat.data[0]);
+        queue.enqueue_now_P(cmd);
+        queue.enqueue_now_P(PSTR("M500"));
+        RTS_SndData(StartSoundSet, SoundAddr);
+        RTS_SndData(recdat.data[0], E1_SET_STEP_VP);
+      break;
+    // end updating for e-steps
+    // added by John Carlson for updating flow
+    case E0FlowKey:
+      //char cmd2[MAX_CMD_SIZE+16];
+      sprintf_P(cmd2, PSTR("M221 S%d T0"), recdat.data[0]);
+      queue.enqueue_now_P(cmd2);
+      queue.enqueue_now_P(PSTR("M500"));
+      RTS_SndData(StartSoundSet, SoundAddr);
+      RTS_SndData(recdat.data[0], E0_SET_FLOW_VP);
+      break;
+
+    case E1FlowKey:
+        sprintf_P(cmd2, PSTR("M221 S%d T1"), recdat.data[0]);
+        queue.enqueue_now_P(cmd2);
+        queue.enqueue_now_P(PSTR("M500"));
+        RTS_SndData(StartSoundSet, SoundAddr);
+        RTS_SndData(recdat.data[0], E1_SET_FLOW_VP);
+      break;
+    // end updating for flow
+    // added by John Carlson for updating fan speed
+    case E0FanKey:
+      //char cmd3[MAX_CMD_SIZE+16];
+      sprintf_P(cmd3, PSTR("M106 S%d P0"), recdat.data[0]);
+      thermalManager.set_fan_speed(0, recdat.data[0]);
+      RTS_SndData(StartSoundSet, SoundAddr);
+      RTS_SndData(recdat.data[0], E0_SET_FAN_VP);
+      if (recdat.data[0] > 0) {
+        RTS_SndData(0, HEAD0_FAN_ICON_VP);
+      } else {
+        RTS_SndData(1, HEAD0_FAN_ICON_VP);
+      }
+      break;
+
+    case E1FanKey:
+        sprintf_P(cmd3, PSTR("M106 S%d P1"), recdat.data[0]);
+        thermalManager.set_fan_speed(1, recdat.data[0]);
+        RTS_SndData(StartSoundSet, SoundAddr);
+        RTS_SndData(recdat.data[0], E1_SET_FAN_VP);
+        if (recdat.data[0] > 0) {
+        RTS_SndData(0, HEAD1_FAN_ICON_VP);
+      } else {
+        RTS_SndData(1, HEAD1_FAN_ICON_VP);
+      }
+      break;
+    // end updating for fan speed
+
     case AxisPageSelectKey:
       if(recdat.data[0] == 5)
       {
@@ -1255,6 +1338,7 @@ void RTSSHOW::RTS_HandleData()
       break;
 
     case SettingScreenKey:
+      SERIAL_ECHOLNPGM("Settings Button ID: ", recdat.data[0]);
       if(recdat.data[0] == 1)
       {
         // Motor Icon
@@ -1353,7 +1437,7 @@ void RTSSHOW::RTS_HandleData()
       else if (recdat.data[0] == 5)
       {
         RTS_SndData(CORP_WEBSITE, PRINTER_WEBSITE_TEXT_VP);
-        RTS_SndData(Screen_version, Screen_Version_VP);
+        //RTS_SndData(Screen_version, Screen_Version_VP);
         RTS_SndData(ExchangePageBase + 33, ExchangepageAddr);
       }
       else if (recdat.data[0] == 6)
@@ -1364,6 +1448,55 @@ void RTSSHOW::RTS_HandleData()
       else if (recdat.data[0] == 7)
       {
         RTS_SndData(ExchangePageBase + 1, ExchangepageAddr);
+      }
+            else if (recdat.data[0] == 8) // switch to advanced settings page 
+      {
+        RTS_SndData(ExchangePageBase + 83, ExchangepageAddr);
+      }
+      break;
+
+    case ASettingsScreenKey:
+      SERIAL_ECHOLNPGM("ASettings Button ID: ", recdat.data[0]);
+      if (recdat.data[0] == 1) // switch to e-steps page 
+      {
+        RTS_SndData(ExchangePageBase + 82, ExchangepageAddr);
+      }
+      else if (recdat.data[0] == 2) // switch to flow settings page 
+      {
+        RTS_SndData(ExchangePageBase + 84, ExchangepageAddr);
+      }
+      else if (recdat.data[0] == 3) // switch to pid tuning page)
+      {
+        RTS_SndData(ExchangePageBase + 85, ExchangepageAddr);
+      }
+      else if (recdat.data[0] == 9) // switch back to settings page
+      {
+        RTS_SndData(ExchangePageBase + 21, ExchangepageAddr);
+      }
+      break;
+
+    case PIDScreenKey:
+      SERIAL_ECHOLNPGM("PIDScreenkey Button ID: ", recdat.data[0]);
+      RTS_SndData(ExchangePageBase + 86, ExchangepageAddr);
+      RTS_SndData("                     ", PID_TEXT_OUT_VP);
+      if (recdat.data[0] == 1) // nozzle 1 page 
+      {
+        const heater_id_t hid = (heater_id_t)0;
+        thermalManager.PID_autotune(200, hid, 5, 1);
+      }
+      else if (recdat.data[0] == 2) // nozzle 2 page 
+      {
+        const heater_id_t hid = (heater_id_t)1;
+        thermalManager.PID_autotune(200, hid, 5, 1);
+      }
+      else if (recdat.data[0] == 3) // bed page 
+      {
+        const heater_id_t hid = (heater_id_t)-1;
+        thermalManager.PID_autotune(60, hid, 5, 1);
+      }
+      else if (recdat.data[0] == 9)
+      {
+        RTS_SndData(ExchangePageBase + 85, ExchangepageAddr);
       }
       break;
 
@@ -1474,12 +1607,10 @@ void RTSSHOW::RTS_HandleData()
       {
         #if ENABLED(BLTOUCH)
           waitway = 3;
-          
-          // new bed level page added by John
+          // new bed level page added by John Carlson
           RTS_SndData(AutoHomeFirstPoint, AUTO_BED_LEVEL_CUR_POINT_VP);
           RTS_SndData(GRID_MAX_POINTS_X * GRID_MAX_POINTS_Y, AUTO_BED_LEVEL_END_POINT);
           RTS_SndData(ExchangePageBase + 80, ExchangepageAddr);
-
           if (!all_axes_trusted()) {
             queue.enqueue_now_P(PSTR("G28"));
           }
@@ -1745,6 +1876,7 @@ void RTSSHOW::RTS_HandleData()
       break;
 
     case FilamentLoadKey:
+
       if(recdat.data[0] == 1)
       {
         if(!planner.has_blocks_queued())
@@ -2114,6 +2246,7 @@ void RTSSHOW::RTS_HandleData()
         strcpy(cmdbuf, cmd);
 
         save_dual_x_carriage_mode = dualXPrintingModeStatus;
+        //SERIAL_ECHOLNPGM("dualXPrintingModeStatus: ", dualXPrintingModeStatus);
         
         switch(save_dual_x_carriage_mode)
         {
@@ -2174,9 +2307,7 @@ void RTSSHOW::RTS_HandleData()
         #if ENABLED(AUTO_BED_LEVELING_BILINEAR)
           bool zig = false;
           int8_t inStart, inStop, inInc, showcount;
-          float mval;
           showcount = 0;
-          std::string meshval;
           for (int y = 0; y < GRID_MAX_POINTS_Y; y++)
           {
             // away from origin
@@ -2196,17 +2327,10 @@ void RTSSHOW::RTS_HandleData()
             zig ^= true;
             for (int x = inStart; x != inStop; x += inInc)
             {
-              //RTS_SndData(LevelingBilinear::z_values[x][y] * 1000, AUTO_BED_LEVEL_1POINT_VP + showcount * 2);
+              RTS_SndData(bedlevel.z_values[x][y]*1000, AUTO_BED_LEVEL_1POINT_VP + showcount * 2);
               showcount++;
-              // added for new Mesh View Page - John Carlson
-              mval = LevelingBilinear::z_values[x][y] * 1000;
-              meshval += printf("%f", mval);
-              meshval += "   ";
             }
-            meshval += "\n";
-            //SERIAL_ECHOLNPGM("meshval: ", meshval.c_str());
           }
-          RTS_SndData(printf("%s", meshval.c_str()), AUTO_BED_LEVEL_MESH_VP);
           queue.enqueue_now_P(PSTR("M420 S1"));
         #endif
         zprobe_zoffset = 0;
@@ -2366,23 +2490,27 @@ void RTSSHOW::RTS_HandleData()
       RTS_SndData(sizeBuf, PRINTER_PRINTSIZE_TEXT_VP);
 
       RTS_SndData(CORP_WEBSITE, PRINTER_WEBSITE_TEXT_VP);
-      RTS_SndData(Screen_version, Screen_Version_VP);
+      //RTS_SndData(Screen_version, Screen_Version_VP);
 
       if (thermalManager.fan_speed[0] == 0)
       {
         RTS_SndData(1, HEAD0_FAN_ICON_VP);
+        RTS_SndData(thermalManager.fan_speed[0], E0_SET_FAN_VP);
       }
       else
       {
         RTS_SndData(0, HEAD0_FAN_ICON_VP);
+        RTS_SndData(thermalManager.fan_speed[0], E0_SET_FAN_VP);
       }
       if (thermalManager.fan_speed[1] == 0)
       {
         RTS_SndData(1, HEAD1_FAN_ICON_VP);
+        RTS_SndData(thermalManager.fan_speed[1], E1_SET_FAN_VP);
       }
       else
       {
         RTS_SndData(0, HEAD1_FAN_ICON_VP);
+        RTS_SndData(thermalManager.fan_speed[1], E1_SET_FAN_VP);
       }
       Percentrecord = card.percentDone() + 1;
       if (Percentrecord <= 100)
@@ -2494,8 +2622,7 @@ void EachMomentUpdate()
                 rtscheck.RTS_SndData(remain_time / 3600, PRINT_SURPLUS_TIME_HOUR_VP);
                 rtscheck.RTS_SndData((remain_time % 3600) / 60, PRINT_SURPLUS_TIME_MIN_VP);
               }
-              else if((0 != save_dual_x_carriage_mode) && (thermalManager.temp_hotend[0].celsius >= (thermalManager.temp_hotend[0].target - 5)) && 
-(thermalManager.temp_hotend[1].celsius >= (thermalManager.temp_hotend[1].target - 5)))
+              else if((0 != save_dual_x_carriage_mode) && (thermalManager.temp_hotend[0].celsius >= (thermalManager.temp_hotend[0].target - 5)) && (thermalManager.temp_hotend[1].celsius >= (thermalManager.temp_hotend[1].target - 5)))
               {
                 remain_time = elapsed.value / (Percentrecord * 0.01f) - elapsed.value;
                 next_remain_time_update += 20 * 1000UL;
@@ -2512,9 +2639,7 @@ void EachMomentUpdate()
           }
           rtscheck.RTS_SndData((unsigned char)card.percentDone(), PRINT_PROCESS_VP);
           last_cardpercentValue = card.percentDone();
-          // giving wrong z position when printing - John Carlson
           //rtscheck.RTS_SndData(10 * current_position[Z_AXIS], AXIS_Z_COORD_VP);
-          rtscheck.RTS_SndData(current_position[Z_AXIS], AXIS_Z_COORD_VP);
         }
       }
 
@@ -2535,8 +2660,7 @@ void EachMomentUpdate()
       rtscheck.RTS_SndData(thermalManager.temp_hotend[1].celsius, HEAD1_CURRENT_TEMP_VP);
       rtscheck.RTS_SndData(thermalManager.temp_bed.celsius, BED_CURRENT_TEMP_VP);
 
-      if((last_target_temperature[0] != thermalManager.temp_hotend[0].target) || (last_target_temperature[1] != 
-thermalManager.temp_hotend[1].target) || (last_target_temperature_bed != thermalManager.temp_bed.target))
+      if((last_target_temperature[0] != thermalManager.temp_hotend[0].target) || (last_target_temperature[1] != thermalManager.temp_hotend[1].target) || (last_target_temperature_bed != thermalManager.temp_bed.target))
       {
         thermalManager.setTargetHotend(thermalManager.temp_hotend[0].target, 0);
         thermalManager.setTargetHotend(thermalManager.temp_hotend[1].target, 1);
@@ -2568,11 +2692,15 @@ thermalManager.temp_hotend[1].target) || (last_target_temperature_bed != thermal
         AutoHomeIconNum = 0;
       }
     }
+    // moved z height output to make sure it is always up to date
+    rtscheck.RTS_SndData(10 * current_position[Z_AXIS], AXIS_Z_COORD_VP);
+    
     next_rts_update_ms = ms + RTS_UPDATE_INTERVAL + Update_Time_Value;
   }
 }
 
 void SetExtruderMode(unsigned int mode, bool isDirect) {
+  SERIAL_ECHOLNPGM("Selected extruder mode: ", mode);
   if (isDirect && mode == 4) {
     mode = 5;
   } else if (isDirect && mode == 0) {
@@ -2636,6 +2764,7 @@ void SetExtruderMode(unsigned int mode, bool isDirect) {
   } else if (mode == 6)
   {
     save_dual_x_carriage_mode = dualXPrintingModeStatus;
+    //SERIAL_ECHOLNPGM("save_dual_x_carriage_mode: ", save_dual_x_carriage_mode);
     settings.save();
     rtscheck.RTS_SndData(ExchangePageBase + 1, ExchangepageAddr);
   } else {
@@ -2703,8 +2832,6 @@ void RTS_AutoBedLevelPage()
 {
   if(waitway == 3)
   {
-    // changed to show new meshview screen after bedlevel complete - John Carlson
-    RTS_SetMeshPage();
     rtscheck.RTS_SndData(ExchangePageBase + 81, ExchangepageAddr);
     waitway = 0;
   }
@@ -2761,48 +2888,4 @@ void RTS_MoveAxisHoming()
   rtscheck.RTS_SndData(10*current_position[Z_AXIS], AXIS_Z_COORD_VP);
 }
 
-void RTS_SetMeshPage()
-{
-  SERIAL_ECHOLNPGM("We are in the RTS_SetMeshPage function");
-  bedlevel.print_leveling_grid_screen();
-  /*#if ENABLED(AUTO_BED_LEVELING_BILINEAR)
-    bool zig = false;
-    int8_t inStart, inStop, inInc, showcount;
-    float mval;
-    showcount = 0;
-    std::string meshval;
-    for (int y = 0; y < GRID_MAX_POINTS_Y; y++)
-    {
-      // away from origin
-      if (zig)
-      {
-        inStart = 0;
-        inStop = GRID_MAX_POINTS_X;
-        inInc = 1;
-      }
-      else
-      {
-        // towards origin
-        inStart = GRID_MAX_POINTS_X - 1;
-        inStop = -1;
-        inInc = -1;
-      }
-      zig ^= true;
-      for (int x = inStart; x != inStop; x += inInc)
-      {
-        showcount++;
-        // added for new Mesh View Page - John Carlson
-        mval = LevelingBilinear::z_values[x][y] * 1000;
-        meshval += printf("%f", mval);
-        meshval += "   ";
-      }
-      meshval += "\n";
-      //SERIAL_ECHOLNPGM("meshval: ", meshval.c_str());
-    }
-    rtscheck.RTS_SndData(printf("%s", meshval.c_str()), AUTO_BED_LEVEL_MESH_VP);
-  #endif*/
-  SERIAL_ECHOLNPGM("End RTS_SetMeshPage");
-}
-
 #endif
-

@@ -612,6 +612,7 @@ void wait_for_confirmation(const bool is_reload/*=false*/, const int8_t max_beep
     }
     idle_no_sleep();
   }
+  SERIAL_ECHOLNPGM("End Wait for user.");
   TERN_(DUAL_X_CARRIAGE, set_duplication_enabled(saved_ext_dup_mode, saved_ext));
 }
 
@@ -662,7 +663,7 @@ void resume_print(const_float_t slow_load_length/*=0*/, const_float_t fast_load_
   // Load the new filament
   load_filament(slow_load_length, fast_load_length, purge_length, max_beep_count, true, nozzle_timed_out, PAUSE_MODE_SAME DXC_PASS);
 
-  queue.enqueue_now_P(PSTR("M117 Loading filament..."));
+  //queue.enqueue_now_P(PSTR("M117 Loading filament..."));
   
   if (targetTemp > 0) {
     thermalManager.setTargetHotend(targetTemp, active_extruder);
@@ -676,7 +677,7 @@ void resume_print(const_float_t slow_load_length/*=0*/, const_float_t fast_load_
 
   // Retract to prevent oozing
   unscaled_e_move(-(PAUSE_PARK_RETRACT_LENGTH), feedRate_t(PAUSE_PARK_RETRACT_FEEDRATE));
-
+  SERIAL_ECHOLNPGM("check for home");
   if (!axes_should_home()) {
     // Move XY back to saved position
     destination.set(resume_position.x, resume_position.y, current_position.z, current_position.e);
@@ -745,8 +746,9 @@ void resume_print(const_float_t slow_load_length/*=0*/, const_float_t fast_load_
 
   TERN_(HAS_FILAMENT_SENSOR, runout.reset());
 
-  ui.reset_status();
-  ui.return_to_status();
+  TERN_(HAS_STATUS_MESSAGE, ui.reset_status());
+  TERN_(HAS_LCD_MENU, ui.return_to_status());
+  TERN_(DWIN_CREALITY_LCD_ENHANCED, HMI_ReturnScreen());
 }
 
 #endif // ADVANCED_PAUSE_FEATURE

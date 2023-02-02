@@ -70,6 +70,9 @@ class TemporaryBedLevelingState {
     #include "mbl/mesh_bed_leveling.h"
   #endif
 
+  #define Z_VALUES(X,Y) Z_VALUES_ARR[X][Y]
+  #define _GET_MESH_POS(M) { _GET_MESH_X(M.a), _GET_MESH_Y(M.b) }
+
   #if EITHER(AUTO_BED_LEVELING_BILINEAR, MESH_BED_LEVELING)
 
     #include <stdint.h>
@@ -80,8 +83,6 @@ class TemporaryBedLevelingState {
      * Print calibration results for plotting or manual frame adjustment.
      */
     void print_2d_array(const uint8_t sx, const uint8_t sy, const uint8_t precision, const float *values);
-    // added for printing bed level grid to screen - John Carlson
-    void print_2d_array_for_screen(const uint8_t sx, const uint8_t sy, const uint8_t precision, const float *values);
 
   #endif
 

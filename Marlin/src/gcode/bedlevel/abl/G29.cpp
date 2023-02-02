@@ -32,6 +32,7 @@
 #include "../../../feature/bedlevel/bedlevel.h"
 #include "../../../module/motion.h"
 #include "../../../module/planner.h"
+#include "../../../module/stepper.h"
 #include "../../../module/probe.h"
 #include "../../../module/settings.h"
 #include "../../queue.h"
@@ -737,14 +738,9 @@ G29_TYPE GcodeSuite::G29() {
             abl.z_values[abl.meshCount.x][abl.meshCount.y] = z;
             TERN_(EXTENSIBLE_UI, ExtUI::onMeshUpdate(abl.meshCount, z));
             #if ENABLED(RTS_AVAILABLE)
-              if((showcount ++) < GRID_MAX_POINTS_X * GRID_MAX_POINTS_Y)
-              {
-                // added by john for new bed level point position display
-                if ((showcount) <  GRID_MAX_POINTS_X * GRID_MAX_POINTS_Y)
-                {
-                  rtscheck.RTS_SndData(showcount + 1, AUTO_BED_LEVEL_CUR_POINT_VP);
-                }
-              }
+              rtscheck.RTS_SndData(showcount + 1, AUTO_BED_LEVEL_CUR_POINT_VP);
+              rtscheck.RTS_SndData(z*1000, AUTO_BED_LEVEL_1POINT_VP + showcount * 2);
+              showcount ++;
             #endif
 
           #endif
@@ -971,6 +967,9 @@ G29_TYPE GcodeSuite::G29() {
   #if ENABLED(RTS_AVAILABLE)
     RTS_AutoBedLevelPage();
   #endif
+  report_current_position();
+
+  TERN_(FULL_REPORT_TO_HOST_FEATURE, set_and_report_grblstate(M_IDLE));
 
   G29_RETURN(isnan(abl.measured_z), true);
 }

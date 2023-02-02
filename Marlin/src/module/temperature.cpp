@@ -618,7 +618,24 @@ volatile bool Temperature::raw_temps_ready = false;
     int cycles = 0;
     bool heating = true;
 
-    millis_t next_temp_ms = millis(), t1 = next_temp_ms, t2 = next_temp_ms;
+    // added by John Carlson for showing PID Auto Tun on screen
+    char textRep[20];
+    int repT = 1; // added for updating the running icon
+    rtscheck.RTS_SndData(0, PID_TUNING_RUNNING_VP);
+    if (heater_id == 0)
+    {
+      rtscheck.RTS_SndData(1, PID_ICON_MODE_VP);
+    }
+    else if (heater_id == 1)
+    {
+      rtscheck.RTS_SndData(2, PID_ICON_MODE_VP);
+    }
+    else if (heater_id == -1)
+    {
+      rtscheck.RTS_SndData(3, PID_ICON_MODE_VP);
+    }
+
+    millis_t next_temp_ms = millis(), t1 = next_temp_ms, t2 = next_temp_ms, next_rep_ms = next_temp_ms;
     long t_high = 0, t_low = 0;
 
     raw_pid_t tune_pid = { 0, 0, 0 };
@@ -643,7 +660,7 @@ volatile bool Temperature::raw_temps_ready = false;
     #define ONHEATING(S,C,T) C_TERN(ischamber, printerEventLEDs.onChamberHeating(S,C,T), B_TERN(isbed, printerEventLEDs.onBedHeating(S,C,T), printerEventLEDs.onHotendHeating(S,C,T)))
 
     #define WATCH_PID DISABLED(NO_WATCH_PID_TUNING) && (BOTH(WATCH_CHAMBER, PIDTEMPCHAMBER) || BOTH(WATCH_BED, PIDTEMPBED) || BOTH(WATCH_HOTENDS, PIDTEMP))
-
+    SERIAL_ECHOLNPGM("Line 663: starting watch");
     #if WATCH_PID
       #if BOTH(THERMAL_PROTECTION_CHAMBER, PIDTEMPCHAMBER)
         #define C_GTV(T,A,B) ((T) ? (A) : (B))
@@ -668,7 +685,7 @@ volatile bool Temperature::raw_temps_ready = false;
 
     TERN_(EXTENSIBLE_UI, ExtUI::onPidTuning(ExtUI::result_t::PID_STARTED));
     TERN_(DWIN_PID_TUNE, DWIN_PidTuning(isbed ? PIDTEMPBED_START : PIDTEMP_START));
-
+    SERIAL_ECHOLNPGM("Line 688: check if target > max_target");
     if (target > GHV(CHAMBER_MAX_TARGET, BED_MAX_TARGET, temp_range[heater_id].maxtemp - (HOTEND_OVERSHOOT))) {
       SERIAL_ECHOPGM(STR_PID_AUTOTUNE);
       SERIAL_ECHOLNPGM(STR_PID_TEMP_TOO_HIGH);
@@ -680,7 +697,7 @@ volatile bool Temperature::raw_temps_ready = false;
 
     SERIAL_ECHOPGM(STR_PID_AUTOTUNE);
     SERIAL_ECHOLNPGM(STR_PID_AUTOTUNE_START);
-
+    SERIAL_ECHOLNPGM("Line 700: disable heaters");
     disable_all_heaters();
     TERN_(AUTO_POWER_CONTROL, powerManager.power_on());
 
@@ -699,7 +716,7 @@ volatile bool Temperature::raw_temps_ready = false;
     // PID Tuning loop
     wait_for_heatup = true;
     while (wait_for_heatup) { // Can be interrupted with M108
-
+      SERIAL_ECHOLNPGM("Line 719: wait for heatup");
       const millis_t ms = millis();
 
       if (updateTemperaturesIfReady()) { // temp sample ready
@@ -714,7 +731,7 @@ volatile bool Temperature::raw_temps_ready = false;
         #endif
 
         TERN_(HAS_FAN_LOGIC, manage_extruder_fans(ms));
-
+        SERIAL_ECHOLNPGM("Line 734: check if heating and current temp >");
         if (heating && current_temp > target && ELAPSED(ms, t2 + 5000UL)) {
           heating = false;
           SHV((bias - d) >> 1);
@@ -722,7 +739,7 @@ volatile bool Temperature::raw_temps_ready = false;
           t_high = t1 - t2;
           maxT = target;
         }
-
+        SERIAL_ECHOLNPGM("Line 742: check if heating and current temp <");
         if (!heating && current_temp < target && ELAPSED(ms, t1 + 5000UL)) {
           heating = true;
           t2 = ms;
@@ -751,6 +768,10 @@ volatile bool Temperature::raw_temps_ready = false;
                 SERIAL_ECHOLNPGM(STR_CLASSIC_PID);
               SERIAL_ECHOLNPGM(STR_KP, tune_pid.p, STR_KI, tune_pid.i, STR_KD, tune_pid.d);
             }
+            // added by John Carlson to show output of cycle
+            rtscheck.RTS_SndData("                     ", PID_TEXT_OUT_VP);
+            sprintf_P(textRep, PSTR("Cycle: %d"), cycles);
+            rtscheck.RTS_SndData(textRep, PID_TEXT_OUT_VP);
           }
           SHV((bias + d) >> 1);
           TERN_(HAS_STATUS_MESSAGE, ui.status_printf(0, F(S_FMT " %i/%i"), GET_TEXT(MSG_PID_CYCLE), cycles, ncycles));
@@ -763,6 +784,7 @@ volatile bool Temperature::raw_temps_ready = false;
       #ifndef MAX_OVERSHOOT_PID_AUTOTUNE
         #define MAX_OVERSHOOT_PID_AUTOTUNE 30
       #endif
+      SERIAL_ECHOLNPGM("Line 787: check for max overshoot");
       if (current_temp > target + MAX_OVERSHOOT_PID_AUTOTUNE) {
         SERIAL_ECHOPGM(STR_PID_AUTOTUNE);
         SERIAL_ECHOLNPGM(STR_PID_TEMP_TOO_HIGH);
@@ -771,17 +793,29 @@ volatile bool Temperature::raw_temps_ready = false;
         TERN_(HOST_PROMPT_SUPPORT, hostui.notify(GET_TEXT_F(MSG_PID_TEMP_TOO_HIGH)));
         break;
       }
-
+      SERIAL_ECHOLNPGM("Line 796: update running icon");
+      // added by John Carlson to update runnin icon
+      if (ELAPSED(ms, next_rep_ms)) {
+        rtscheck.RTS_SndData(repT ++, PID_TUNING_RUNNING_VP);
+        if (repT > 11) {
+          repT = 0;
+        }
+        next_rep_ms = ms + 500UL;
+      }
+      SERIAL_ECHOLNPGM("Line 805: report heater states");
       // Report heater states every 2 seconds
       if (ELAPSED(ms, next_temp_ms)) {
+        SERIAL_ECHOLNPGM("Line 808: elapsing");
         #if HAS_TEMP_SENSOR
+          SERIAL_ECHOLNPGM("Line 809: print the heater states");
           print_heater_states(heater_id < 0 ? active_extruder : (int8_t)heater_id);
           SERIAL_EOL();
         #endif
         next_temp_ms = ms + 2000UL;
-
+        SERIAL_ECHOLNPGM("Line 814: need to watch pid");
         // Make sure heating is actually working
         #if WATCH_PID
+          SERIAL_ECHOLNPGM("Line 816: watch pid");
           if (BOTH(WATCH_BED, WATCH_HOTENDS) || isbed == DISABLED(WATCH_HOTENDS) || ischamber == DISABLED(WATCH_HOTENDS)) {
             if (!heated) {                                            // If not yet reached target...
               if (current_temp > next_watch_temp) {                   // Over the watch temp?
@@ -790,20 +824,26 @@ volatile bool Temperature::raw_temps_ready = false;
                 if (current_temp > watch_temp_target) heated = true;  // - Flag if target temperature reached
               }
               else if (ELAPSED(ms, temp_change_ms))                   // Watch timer expired
+              {
+                //SERIAL_ECHOLNPGM("Line 824: heater failed because of elapsed");
                 #if ENABLED(RTS_AVAILABLE) 
                   rtscheck.RTS_SndData(ExchangePageBase + 53, ExchangepageAddr);
                 #endif
                 _temp_error(heater_id, FPSTR(str_t_heating_failed), GET_TEXT_F(MSG_HEATING_FAILED_LCD));
+              }
             }
             else if (current_temp < target - (MAX_OVERSHOOT_PID_AUTOTUNE)) // Heated, then temperature fell too far?
+            {
+              //SERIAL_ECHOLNPGM("Line 831: heated then temp fell too far");
               #if ENABLED(RTS_AVAILABLE)
                 rtscheck.RTS_SndData(ExchangePageBase + 52, ExchangepageAddr);
               #endif
               _temp_error(heater_id, FPSTR(str_t_thermal_runaway), GET_TEXT_F(MSG_THERMAL_RUNAWAY));
+            }
           }
         #endif
       } // every 2 seconds
-
+      //SERIAL_ECHOLNPGM("Line 839: checkfor overshoot timeout");
       // Timeout after MAX_CYCLE_TIME_PID_AUTOTUNE minutes since the last undershoot/overshoot cycle
       #ifndef MAX_CYCLE_TIME_PID_AUTOTUNE
         #define MAX_CYCLE_TIME_PID_AUTOTUNE 20L
@@ -869,6 +909,12 @@ volatile bool Temperature::raw_temps_ready = false;
 
         TERN_(EXTENSIBLE_UI, ExtUI::onPidTuning(ExtUI::result_t::PID_DONE));
         TERN_(DWIN_PID_TUNE, DWIN_PidTuning(PID_DONE));
+
+        // added by John Carlson to change page after PID Tuning complete
+        rtscheck.RTS_SndData("                     ", PID_TEXT_OUT_VP);
+        rtscheck.RTS_SndData("PID Tuning Complete!", PID_TEXT_OUT_VP);
+        delay(2000);
+        rtscheck.RTS_SndData(ExchangePageBase + 87, ExchangepageAddr);
 
         goto EXIT_M303;
       }
@@ -1572,6 +1618,7 @@ void Temperature::mintemp_error(const heater_id_t heater_id) {
           if (watch_hotend[e].check(degHotend(e)))  // Increased enough?
             start_watching_hotend(e);               // If temp reached, turn off elapsed check
           else {
+            //SERIAL_ECHOLNPGM("Line 1611: heating failed! ");
             #if ENABLED(RTS_AVAILABLE)
               rtscheck.RTS_SndData(ExchangePageBase + 53, ExchangepageAddr);
             #endif
@@ -1604,6 +1651,7 @@ void Temperature::mintemp_error(const heater_id_t heater_id) {
         if (watch_bed.check(degBed()))          // Increased enough?
           start_watching_bed();                 // If temp reached, turn off elapsed check
         else {
+          //SERIAL_ECHOLNPGM("Line 1644: heating failed! ");
           #if ENABLED(RTS_AVAILABLE)
             rtscheck.RTS_SndData(ExchangePageBase + 53, ExchangepageAddr);
           #endif
@@ -1696,6 +1744,10 @@ void Temperature::mintemp_error(const heater_id_t heater_id) {
         if (watch_chamber.check(degChamber()))  // Increased enough? Error below.
           start_watching_chamber();             // If temp reached, turn off elapsed check.
         else
+          //SERIAL_ECHOLNPGM("Line 1737: heating failed! ");
+          #if ENABLED(RTS_AVAILABLE)
+            rtscheck.RTS_SndData(ExchangePageBase + 53, ExchangepageAddr);
+          #endif
           _temp_error(H_CHAMBER, FPSTR(str_t_heating_failed), GET_TEXT_F(MSG_HEATING_FAILED_LCD));
       }
     #endif
@@ -1820,6 +1872,7 @@ void Temperature::mintemp_error(const heater_id_t heater_id) {
       // Make sure temperature is decreasing
       if (watch_cooler.elapsed(ms)) {             // Time to check the cooler?
         if (degCooler() > watch_cooler.target)    // Failed to decrease enough?
+          //SERIAL_ECHOLNPGM("Line 1865: heating failed! ");
           _temp_error(H_COOLER, GET_TEXT_F(MSG_COOLING_FAILED), GET_TEXT_F(MSG_COOLING_FAILED));
         else
           start_watching_cooler();                 // Start again if the target is still far off

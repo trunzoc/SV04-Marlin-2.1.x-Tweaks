@@ -28,6 +28,7 @@
 
 #include "../gcode.h"
 #include "../../module/motion.h"
+#include "../../module/stepper.h"
 #include "../../module/tool_change.h"
 #include "../../module/planner.h"
 
@@ -77,12 +78,12 @@
 
         case DXC_FULL_CONTROL_MODE:
           #if ENABLED(RTS_AVAILABLE)
-            SetExtruderMode(4, false);
+            //SetExtruderMode(4, false);
           #endif
           break;
         case DXC_AUTO_PARK_MODE:
           #if ENABLED(RTS_AVAILABLE)
-            SetExtruderMode(1, false);
+            //SetExtruderMode(1, false);
           #endif
           break;
 
@@ -94,7 +95,7 @@
           if (active_extruder != 0) tool_change(0);
 
           #if ENABLED(RTS_AVAILABLE)
-            SetExtruderMode(2, false);
+            //SetExtruderMode(2, false);
           #endif
           break;
 
@@ -115,7 +116,7 @@
           }
 
           #if ENABLED(RTS_AVAILABLE)
-            SetExtruderMode(3, false);
+            //SetExtruderMode(3, false);
           #endif
         } return;
 

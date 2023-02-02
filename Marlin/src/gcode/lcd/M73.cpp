@@ -91,8 +91,6 @@ void GcodeSuite::M73() {
     #if ENABLED(SET_REMAINING_TIME)
       if (parser.seenval('R')) {
         remaining_time = 60 * parser.value_ulong();
-      
-        ui.set_remaining_time(remaining_time);
         rtscheck.RTS_SndData(remaining_time / 3600, PRINT_SURPLUS_TIME_HOUR_VP);
         rtscheck.RTS_SndData((remaining_time % 3600) / 60, PRINT_SURPLUS_TIME_MIN_VP);
       }

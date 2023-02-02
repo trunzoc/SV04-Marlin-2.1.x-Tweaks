@@ -70,32 +70,25 @@ extern int power_off_type_yes;
 #define TWO_EXTRUDER_HOTEND_YOFFSET_VP     0x1094
 #define TWO_EXTRUDER_HOTEND_ZOFFSET_VP     0x1096
 
-#define AUTO_BED_LEVEL_1POINT_VP           0x1100
-// #define AUTO_BED_LEVEL_2POINT_VP           0x1102
-// #define AUTO_BED_LEVEL_3POINT_VP           0x1104
-// #define AUTO_BED_LEVEL_4POINT_VP           0x1106
-// #define AUTO_BED_LEVEL_5POINT_VP           0x1108
-// #define AUTO_BED_LEVEL_6POINT_VP           0x110A
-// #define AUTO_BED_LEVEL_7POINT_VP           0x110C
-// #define AUTO_BED_LEVEL_8POINT_VP           0x110E
-// #define AUTO_BED_LEVEL_9POINT_VP           0x1110
-// #define AUTO_BED_LEVEL_10POINT_VP          0x1112
-// #define AUTO_BED_LEVEL_11POINT_VP          0x1114
-// #define AUTO_BED_LEVEL_12POINT_VP          0x1116
-// #define AUTO_BED_LEVEL_13POINT_VP          0x1118
-// #define AUTO_BED_LEVEL_14POINT_VP          0x111A
-// #define AUTO_BED_LEVEL_15POINT_VP          0x111C
-// #define AUTO_BED_LEVEL_16POINT_VP          0x111E
+#define AUTO_BED_LEVEL_1POINT_VP           0x4000 // changed to 0x4000 from 0x1100 by John Carlson
 
 // added by John Carlson for new bed point leveling display
 #define AUTO_BED_LEVEL_CUR_POINT_VP          0x0110
 #define AUTO_BED_LEVEL_END_POINT          0x0112
 #define AUTO_BED_LEVEL_MESH_VP            0x0111
+#define PID_TUNING_RUNNING_VP             0x1001
+#define PID_ICON_MODE_VP                  0x1003
+#define PID_TEXT_OUT_VP                   0x205B
+
+// add by John Carlson for new e-steps update
+#define E0_SET_STEP_VP                        0x1103
+#define E1_SET_STEP_VP                       0X1104
+#define E0_SET_FLOW_VP                        0x1105
+#define E1_SET_FLOW_VP                       0X1106
+#define E0_SET_FAN_VP                        0x1107
+#define E1_SET_FAN_VP                       0x1108
 
 #define AUTO_TRAM_1TEXT_VP                 0x1120
-//#define AUTO_TRAM_2TEXT_VP                 0x1138
-//#define AUTO_TRAM_3TEXT_VP                 0x1150
-//#define AUTO_TRAM_4TEXT_VP                 0x1168
 
 #define PRINT_SURPLUS_TIME_HOUR_VP         0x1162
 #define PRINT_SURPLUS_TIME_MIN_VP          0x1164
@@ -104,46 +97,9 @@ extern int power_off_type_yes;
 
 #define MOTOR_FREE_ICON_VP                 0x1200
 #define FILE1_SELECT_ICON_VP               0x1225
-//#define FILE2_SELECT_ICON_VP               0x1222
-//#define FILE3_SELECT_ICON_VP               0x1223
-//#define FILE4_SELECT_ICON_VP               0x1224
-//#define FILE5_SELECT_ICON_VP               0x1225
-//#define FILE6_SELECT_ICON_VP               0x1226
-//#define FILE7_SELECT_ICON_VP               0x1227
-//#define FILE8_SELECT_ICON_VP               0x1228
-//#define FILE9_SELECT_ICON_VP               0x1229
-//#define FILE10_SELECT_ICON_VP              0x122A
-//#define FILE11_SELECT_ICON_VP              0x122B
-//#define FILE12_SELECT_ICON_VP              0x122C
-//#define FILE13_SELECT_ICON_VP              0x122D
-//#define FILE14_SELECT_ICON_VP              0x122E
-//#define FILE15_SELECT_ICON_VP              0x122F
-//#define FILE16_SELECT_ICON_VP              0x1230
-//#define FILE17_SELECT_ICON_VP              0x1231
-//#define FILE18_SELECT_ICON_VP              0x1232
-//#define FILE19_SELECT_ICON_VP              0x1233
-//#define FILE20_SELECT_ICON_VP              0x1234
 
 #define PAGE_STATUS_TEXT_VP                0x201E
 #define FILE1_TEXT_VP                      0x205A
-//#define FILE3_TEXT_VP                      0x2032
-//#define FILE4_TEXT_VP                      0x2046
-//#define FILE5_TEXT_VP                      0x205A
-//#define FILE6_TEXT_VP                      0x206E
-//#define FILE7_TEXT_VP                      0x2082
-//#define FILE8_TEXT_VP                      0x2096
-//#define FILE9_TEXT_VP                      0x20AA
-//#define FILE10_TEXT_VP                     0x20BE
-//#define FILE11_TEXT_VP                     0x20D2
-//#define FILE12_TEXT_VP                     0x20E6
-//#define FILE13_TEXT_VP                     0x20FA
-//#define FILE14_TEXT_VP                     0x210E
-//#define FILE15_TEXT_VP                     0x2122
-//#define FILE16_TEXT_VP                     0x2136
-//#define FILE17_TEXT_VP                     0x214A
-//#define FILE18_TEXT_VP                     0x215E
-//#define FILE19_TEXT_VP                     0x2172
-//#define FILE20_TEXT_VP                     0x2186
 
 #define SELECT_FILE_TEXT_VP                0x219A
 #define TWO_COLOR_MODE_ICON_VP             0x21B8
@@ -153,7 +109,7 @@ extern int power_off_type_yes;
 #define EXCHANGE_NOZZLE_ICON_VP            0x21BC
 #define PRINT_MODE_ICON_VP                 0x21BD
 #define PRINT_FILE_TEXT_VP                 0x21C0
-#define Screen_Version_VP                  0X2200
+#define Screen_Version_VP                  0x2200
 #define FilenameNature                     0x6003
 #define	Beep       					               ((unsigned long)0x02AF0100)
 /************struct**************/
@@ -237,6 +193,12 @@ enum PROC_COM
   Heater0TempEnterKey,
   Heater1TempEnterKey,
   HotBedTempEnterKey,
+  E0StepsKey,
+  E1StepsKey,
+  E0FlowKey,
+  E1FlowKey,
+  E0FanKey,
+  E1FanKey,
   SettingScreenKey,
   SettingBackKey,
   BedLevelFunKey,
@@ -259,6 +221,8 @@ enum PROC_COM
   PrintFileKey,
   SelectFileKey,
   SaveEEPROM,
+  ASettingsScreenKey,
+  PIDScreenKey,
   ChangePageKey
 };
 
@@ -276,6 +240,12 @@ const unsigned long Addrbuf[] =
   0x1034,
   0x1038,
   0x103A,
+  0x1103,
+  0x1104,
+  0x1105,
+  0x1106,
+  0x1107,
+  0x1108,
   0x103E,
   0x1040,
   0x1044,
@@ -297,7 +267,9 @@ const unsigned long Addrbuf[] =
   0x1098,
   0x2198,
   0x2199,
-  0X2202,
+  0x2202,
+  0x103F,
+  0x1080,
   0x110E,
   0
 };
@@ -318,7 +290,5 @@ extern float current_position_x1_axis;
 void RTS_PauseMoveAxisPage();
 void RTS_AutoBedLevelPage();
 void RTS_MoveAxisHoming();
-void RTS_SetMeshPage();
 
 #endif
-
