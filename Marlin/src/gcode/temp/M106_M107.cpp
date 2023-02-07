@@ -36,6 +36,10 @@
   #include "../../lcd/marlinui.h"
 #endif
 
+#if ENABLED(RTS_AVAILABLE)
+  #include "../../lcd/e3v2/creality/LCD_RTS.h"
+#endif
+
 #if ENABLED(SINGLENOZZLE)
   #define _ALT_P active_extruder
   #define _CNT_P EXTRUDERS
@@ -101,6 +105,15 @@ void GcodeSuite::M106() {
 
   if (TERN0(DUAL_X_CARRIAGE, idex_is_duplicating()))  // pfan == 0 when duplicating
     thermalManager.set_fan_speed(1 - pfan, speed);
+
+  #if ENABLED(RTS_AVAILABLE)
+    if (pfan == 0)
+    {
+      rtscheck.RTS_SndData(speed, E0_SET_FAN_VP);
+    } else {
+      rtscheck.RTS_SndData(speed, E1_SET_FAN_VP);
+    }
+  #endif
 }
 
 /**

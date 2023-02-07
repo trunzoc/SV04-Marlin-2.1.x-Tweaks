@@ -199,6 +199,7 @@ enum PROC_COM
   E1FlowKey,
   E0FanKey,
   E1FanKey,
+  ChangeFilamentKey,
   SettingScreenKey,
   SettingBackKey,
   BedLevelFunKey,
@@ -246,6 +247,7 @@ const unsigned long Addrbuf[] =
   0x1106,
   0x1107,
   0x1108,
+  0x1109,
   0x103E,
   0x1040,
   0x1044,
@@ -290,5 +292,6 @@ extern float current_position_x1_axis;
 void RTS_PauseMoveAxisPage();
 void RTS_AutoBedLevelPage();
 void RTS_MoveAxisHoming();
+void RTS_AlertBeep();
 
 #endif

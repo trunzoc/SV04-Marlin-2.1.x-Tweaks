@@ -94,6 +94,7 @@ int Update_Time_Value = 0;
 
 // added by John Carlson
 int AutoHomeFirstPoint = 0;
+bool SoundFlag = false;
 
 bool PoweroffContinue = false;
 char commandbuf[30];
@@ -420,6 +421,9 @@ void RTSSHOW::RTS_Init()
   RTS_SndData(planner.flow_percentage[1], E1_SET_FLOW_VP);
   RTS_SndData(thermalManager.fan_speed[0], E0_SET_FAN_VP);
   RTS_SndData(thermalManager.fan_speed[1], E1_SET_FAN_VP);
+  #if ENABLED(SOUND_ON_DEFAULT)
+    SoundFlag = true;
+  #endif
 
   /***************transmit Fan speed to screen*****************/
   // turn off fans
@@ -749,20 +753,24 @@ void RTSSHOW::RTS_SDcard_Stop()
     #endif
   }
   #ifdef EVENT_GCODE_SD_ABORT
-    char abtcmd[21] = "";
+    //char abtcmd[21] = "";
+    SERIAL_ECHOLNPGM("starting stop");
     queue.inject(PSTR(EVENT_GCODE_SD_ABORT));
-    queue.inject(PSTR("G90"));
-    sprintf_P(abtcmd, PSTR("G1 Y%i F300\nM84"), Y_BED_SIZE);
-    queue.inject(abtcmd);
+    // need to fix this..
+    SERIAL_ECHOLNPGM("event gcode sd abort finished");
+    //queue.inject(PSTR("M84"));
 
     //queue.inject_P(PSTR(EVENT_GCODE_SD_ABORT));
     //queue.inject_P(PSTR(abtcmd));
   #endif
-
+  SERIAL_ECHOLNPGM("should delay");
+  delay(2);
+  SERIAL_ECHOLNPGM("shutdown planner");
   planner.finish_and_disable();
+  SERIAL_ECHOLNPGM("planner shutdown");
 
   // shut down the stepper motor.
-  // queue.enqueue_now_P(PSTR("M84"));
+  queue.inject(PSTR("M84"));
   RTS_SndData(0, MOTOR_FREE_ICON_VP);
 
   RTS_SndData(0, PRINT_PROCESS_ICON_VP);
@@ -810,7 +818,6 @@ void RTSSHOW::RTS_HandleData()
 
   char cmd[MAX_CMD_SIZE+16];
   char cmd2[MAX_CMD_SIZE+16];
-  char cmd3[MAX_CMD_SIZE+16];
 
   switch(Checkkey)
   {
@@ -1012,22 +1019,31 @@ void RTSSHOW::RTS_HandleData()
       }
       else if(recdat.data[0] == 3)
       {
+        SERIAL_ECHOLNPGM("PoweroffContinue: ", PoweroffContinue);
         //heat and change filament, and resume
         if(PoweroffContinue == true)
         {
+          SERIAL_ECHOLNPGM("PoweroffContinue: true change to page 8");
           RTS_SndData(ExchangePageBase + 8, ExchangepageAddr);
+          PoweroffContinue = false; // added by John Carlson to reset the flag
         }
         else if(PoweroffContinue == false)
         {
+          SERIAL_ECHOLNPGM("PoweroffContinue: false run heatup command");
           char cmd[MAX_CMD_SIZE+16];
           char *c;
           sprintf_P(cmd, PSTR("M23 %s"), fileInfo.currentFilePath);
+          SERIAL_ECHOLNPGM("cmd :", cmd);
           for (c = &cmd[4]; *c; c++)
             *c = tolower(*c);
 
-          queue.enqueue_one_now(cmd);
+          //queue.enqueue_one_now(cmd);
+          SERIAL_ECHOLNPGM("cmd after:", cmd);
+          queue.inject(cmd);
           delay(20);
-          queue.enqueue_now_P(PSTR("M24"));
+          //queue.enqueue_now_P(PSTR("M24"));
+          SERIAL_ECHOLNPGM("run m24");
+          queue.inject(PSTR("M24"));
           // clean screen.
           for (int j = 0; j < 20; j ++)
           {
@@ -1038,11 +1054,13 @@ void RTSSHOW::RTS_HandleData()
           #if ENABLED(BABYSTEPPING)
             RTS_SndData(0, AUTO_BED_LEVEL_ZOFFSET_VP);
           #endif
+          SERIAL_ECHOLNPGM("set screen settings");
           feedrate_percentage = 100;
           RTS_SndData(feedrate_percentage, PRINT_SPEED_RATE_VP);
           zprobe_zoffset = last_zoffset;
           RTS_SndData(probe.offset.z * 100, AUTO_BED_LEVEL_ZOFFSET_VP);
           PoweroffContinue = true;
+          SERIAL_ECHOLNPGM("power off continue: true and change to page 11");
           RTS_SndData(ExchangePageBase + 11, ExchangepageAddr);
           sdcard_pause_check = true;
         }
@@ -1213,19 +1231,38 @@ void RTSSHOW::RTS_HandleData()
       break;
 
     case Heater0TempEnterKey:
-      thermalManager.temp_hotend[0].target = recdat.data[0];
+      SERIAL_ECHOLNPGM("Heater0TempKey: ", recdat.data[0]);
+      int h1tgt;
+      if (recdat.data[0] >= HEATER_0_MAXTEMP) {
+        h1tgt = HEATER_0_MAXTEMP;
+      } else {
+        h1tgt = recdat.data[0];
+      }
+      thermalManager.temp_hotend[0].target = h1tgt;
       thermalManager.setTargetHotend(thermalManager.temp_hotend[0].target, 0);
       RTS_SndData(thermalManager.temp_hotend[0].target, HEAD0_SET_TEMP_VP);
       break;
 
     case Heater1TempEnterKey:
-      thermalManager.temp_hotend[1].target = recdat.data[0];
+      int h2tgt;
+      if (recdat.data[0] >= HEATER_1_MAXTEMP) {
+        h2tgt = HEATER_1_MAXTEMP;
+      } else {
+        h2tgt = recdat.data[0];
+      }
+      thermalManager.temp_hotend[1].target = h2tgt;
       thermalManager.setTargetHotend(thermalManager.temp_hotend[1].target, 1);
       RTS_SndData(thermalManager.temp_hotend[1].target, HEAD1_SET_TEMP_VP);
       break;
 
     case HotBedTempEnterKey:
-      thermalManager.temp_bed.target = recdat.data[0];
+      int hbtgt;
+      if (recdat.data[0] >= BED_MAXTEMP) {
+        hbtgt = BED_MAXTEMP;
+      } else {
+        hbtgt = recdat.data[0];
+      }
+      thermalManager.temp_bed.target = hbtgt;
       thermalManager.setTargetBed(thermalManager.temp_bed.target);
       RTS_SndData(thermalManager.temp_bed.target, BED_SET_TEMP_VP);
       break;
@@ -1240,7 +1277,6 @@ void RTSSHOW::RTS_HandleData()
 
     // added by John Carlson for updating e-steps
     case E0StepsKey:
-      //char cmd[MAX_CMD_SIZE+16];
       sprintf_P(cmd, PSTR("M92 E%d T0"), recdat.data[0]);
       queue.enqueue_now_P(cmd);
       queue.enqueue_now_P(PSTR("M500"));
@@ -1249,35 +1285,32 @@ void RTSSHOW::RTS_HandleData()
       break;
 
     case E1StepsKey:
-        sprintf_P(cmd, PSTR("M92 E%d T1"), recdat.data[0]);
-        queue.enqueue_now_P(cmd);
-        queue.enqueue_now_P(PSTR("M500"));
-        RTS_SndData(StartSoundSet, SoundAddr);
-        RTS_SndData(recdat.data[0], E1_SET_STEP_VP);
+      sprintf_P(cmd, PSTR("M92 E%d T1"), recdat.data[0]);
+      queue.enqueue_now_P(cmd);
+      queue.enqueue_now_P(PSTR("M500"));
+      RTS_SndData(StartSoundSet, SoundAddr);
+      RTS_SndData(recdat.data[0], E1_SET_STEP_VP);
       break;
     // end updating for e-steps
     // added by John Carlson for updating flow
     case E0FlowKey:
-      //char cmd2[MAX_CMD_SIZE+16];
-      sprintf_P(cmd2, PSTR("M221 S%d T0"), recdat.data[0]);
-      queue.enqueue_now_P(cmd2);
-      queue.enqueue_now_P(PSTR("M500"));
+      /*sprintf_P(cmd2, PSTR("M221 S%d T0"), recdat.data[0]);
+      queue.enqueue_one_now(cmd2);*/
+      planner.set_flow(0, recdat.data[0]);
       RTS_SndData(StartSoundSet, SoundAddr);
       RTS_SndData(recdat.data[0], E0_SET_FLOW_VP);
       break;
 
     case E1FlowKey:
-        sprintf_P(cmd2, PSTR("M221 S%d T1"), recdat.data[0]);
-        queue.enqueue_now_P(cmd2);
-        queue.enqueue_now_P(PSTR("M500"));
-        RTS_SndData(StartSoundSet, SoundAddr);
-        RTS_SndData(recdat.data[0], E1_SET_FLOW_VP);
+      /*sprintf_P(cmd2, PSTR("M221 S%d T1"), recdat.data[0]);
+      queue.enqueue_one_now(cmd2);*/
+      planner.set_flow(1, recdat.data[0]);
+      RTS_SndData(StartSoundSet, SoundAddr);
+      RTS_SndData(recdat.data[0], E1_SET_FLOW_VP);
       break;
     // end updating for flow
     // added by John Carlson for updating fan speed
     case E0FanKey:
-      //char cmd3[MAX_CMD_SIZE+16];
-      sprintf_P(cmd3, PSTR("M106 S%d P0"), recdat.data[0]);
       thermalManager.set_fan_speed(0, recdat.data[0]);
       RTS_SndData(StartSoundSet, SoundAddr);
       RTS_SndData(recdat.data[0], E0_SET_FAN_VP);
@@ -1289,17 +1322,23 @@ void RTSSHOW::RTS_HandleData()
       break;
 
     case E1FanKey:
-        sprintf_P(cmd3, PSTR("M106 S%d P1"), recdat.data[0]);
-        thermalManager.set_fan_speed(1, recdat.data[0]);
-        RTS_SndData(StartSoundSet, SoundAddr);
-        RTS_SndData(recdat.data[0], E1_SET_FAN_VP);
-        if (recdat.data[0] > 0) {
+      thermalManager.set_fan_speed(1, recdat.data[0]);
+      RTS_SndData(StartSoundSet, SoundAddr);
+      RTS_SndData(recdat.data[0], E1_SET_FAN_VP);
+      if (recdat.data[0] > 0) {
         RTS_SndData(0, HEAD1_FAN_ICON_VP);
       } else {
         RTS_SndData(1, HEAD1_FAN_ICON_VP);
       }
       break;
     // end updating for fan speed
+
+    case ChangeFilamentKey: //FILAMENT_RUNOUT_SCRIPT
+      char cmdF[MAX_CMD_SIZE+16];
+      sprintf_P(cmdF, PSTR(FILAMENT_RUNOUT_SCRIPT), recdat.data[0]);
+      queue.inject(cmdF);
+      delay(2);
+      break;
 
     case AxisPageSelectKey:
       if(recdat.data[0] == 5)
@@ -2075,7 +2114,7 @@ void RTSSHOW::RTS_HandleData()
       break;
 
     case PowerContinuePrintKey:
-      if (recdat.data[0] == 1)
+      if (recdat.data[0] == 1) // yes to resume print
       {
         #if ENABLED(DUAL_X_CARRIAGE)
           save_dual_x_carriage_mode = dualXPrintingModeStatus;
@@ -2113,7 +2152,7 @@ void RTSSHOW::RTS_HandleData()
           PrintFlag = 2;
         }
       }
-      else if (recdat.data[0] == 2)
+      else if (recdat.data[0] == 2) // no to stop print
       {
         Update_Time_Value = RTS_UPDATE_VALUE;
         #if ENABLED(DUAL_X_CARRIAGE)
@@ -2389,7 +2428,8 @@ void RTSSHOW::RTS_HandleData()
       if (recdat.data[0] == 1)
       {
         settings.save();
-        RTS_SndData(StartSoundSet, SoundAddr);
+        //RTS_SndData(StartSoundSet, SoundAddr);
+        RTS_AlertBeep();
       }
     break;
     case ChangePageKey:
@@ -2639,7 +2679,6 @@ void EachMomentUpdate()
           }
           rtscheck.RTS_SndData((unsigned char)card.percentDone(), PRINT_PROCESS_VP);
           last_cardpercentValue = card.percentDone();
-          //rtscheck.RTS_SndData(10 * current_position[Z_AXIS], AXIS_Z_COORD_VP);
         }
       }
 
@@ -2886,6 +2925,13 @@ void RTS_MoveAxisHoming()
   rtscheck.RTS_SndData(10*current_position[X_AXIS], AXIS_X_COORD_VP);
   rtscheck.RTS_SndData(10*current_position[Y_AXIS], AXIS_Y_COORD_VP);
   rtscheck.RTS_SndData(10*current_position[Z_AXIS], AXIS_Z_COORD_VP);
+}
+
+void RTS_AlertBeep() {
+  if (SoundFlag == true)
+  {
+    rtscheck.RTS_SndData(StartSoundSet, SoundAddr);
+  }
 }
 
 #endif

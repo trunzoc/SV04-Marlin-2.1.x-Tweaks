@@ -564,6 +564,7 @@ void wait_for_confirmation(const bool is_reload/*=false*/, const int8_t max_beep
     // Wait for the user to press the button to re-heat the nozzle, then
     // re-heat the nozzle, re-show the continue prompt, restart idle timers, start over
     if (nozzle_timed_out) {
+      //PoweroffContinue = false;
       ui.pause_show_message(PAUSE_MESSAGE_HEAT);
       rtscheck.RTS_SndData(ExchangePageBase + 39, ExchangepageAddr);
       rtscheck.RTS_SndData(thermalManager.temp_hotend[0].celsius, HEAD0_CURRENT_TEMP_VP);
