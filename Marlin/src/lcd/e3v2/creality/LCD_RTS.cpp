@@ -2128,7 +2128,7 @@ void RTSSHOW::RTS_HandleData()
               queue.enqueue_now_P(PSTR("M605 S2"));
               break;
             case 3:
-              queue.enqueue_now_P(PSTR("M605 S2 X68 R0"));
+              queue.enqueue_now_P(PSTR("M605 S2 X150 R0"));
               queue.enqueue_now_P(PSTR("M605 S3"));
               break;
             default:
@@ -2296,7 +2296,7 @@ void RTSSHOW::RTS_HandleData()
             queue.enqueue_now_P(PSTR("M605 S2"));
             break;
           case 3:
-            queue.enqueue_now_P(PSTR("M605 S2 X68 R0"));
+            queue.enqueue_now_P(PSTR("M605 S2 X150 R0"));
             queue.enqueue_now_P(PSTR("M605 S3"));
             break;
           default:

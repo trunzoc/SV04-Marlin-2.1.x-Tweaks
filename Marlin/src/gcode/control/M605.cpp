@@ -79,11 +79,13 @@
         case DXC_FULL_CONTROL_MODE:
           #if ENABLED(RTS_AVAILABLE)
             //SetExtruderMode(4, false);
+            dualXPrintingModeStatus = 0;
           #endif
           break;
         case DXC_AUTO_PARK_MODE:
           #if ENABLED(RTS_AVAILABLE)
             //SetExtruderMode(1, false);
+            dualXPrintingModeStatus = 1;
           #endif
           break;
 
@@ -96,6 +98,7 @@
 
           #if ENABLED(RTS_AVAILABLE)
             //SetExtruderMode(2, false);
+            dualXPrintingModeStatus = 2;
           #endif
           break;
 
@@ -117,13 +120,17 @@
 
           #if ENABLED(RTS_AVAILABLE)
             //SetExtruderMode(3, false);
+            dualXPrintingModeStatus = 3;
           #endif
         } return;
 
         default:
           dual_x_carriage_mode = DEFAULT_DUAL_X_CARRIAGE_MODE;
+          dualXPrintingModeStatus = 1;
           break;
       }
+
+      save_dual_x_carriage_mode = dualXPrintingModeStatus;
 
       idex_set_parked(false);
       set_duplication_enabled(false);
