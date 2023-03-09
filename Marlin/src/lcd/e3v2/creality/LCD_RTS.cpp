@@ -2424,6 +2424,21 @@ void RTSSHOW::RTS_HandleData()
       RTS_SndData(hotend_offset[1].y * 100, TWO_EXTRUDER_HOTEND_YOFFSET_VP);
       break;
 
+    case ZhotendOffsetKey:
+      if (recdat.data[0] >= 32768)
+      {
+        hotend_offset[1].z = (recdat.data[0] - 65536) / 100.0;
+        hotend_offset[1].z = hotend_offset[1].z - 0.00001;
+      }
+      else
+      {
+        hotend_offset[1].z = (recdat.data[0]) / 100.0;
+        hotend_offset[1].z = hotend_offset[1].z + 0.00001;
+      }
+
+      RTS_SndData(hotend_offset[1].z * 100, TWO_EXTRUDER_HOTEND_ZOFFSET_VP);
+      break;
+
     case SaveEEPROM:
       if (recdat.data[0] == 1)
       {

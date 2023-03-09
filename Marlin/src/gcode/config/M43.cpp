@@ -374,7 +374,7 @@ void GcodeSuite::M43() {
       }
 
       #if HAS_RESUME_CONTINUE
-        ui.update();
+        //ui.update();
         if (!wait_for_user) break;
       #endif
 
