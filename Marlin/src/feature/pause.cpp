@@ -479,7 +479,7 @@ bool pause_print(const_float_t retract, const xyz_pos_t &park_point, const bool 
   if (active_extruder == 0) safeParkPoint.x = X1_MIN_POS + 10;
   if (active_extruder == 1) safeParkPoint.x = X2_MAX_POS - 10;
 
-  if (do_park) nozzle.park(0, park_point); // Park the nozzle by doing a Minimum Z Raise followed by an XY Move
+  if (do_park) nozzle.park(0, safeParkPoint); // Park the nozzle by doing a Minimum Z Raise followed by an XY Move
   TERN_(DWIN_LCD_PROUI, if (!do_park) ui.set_status(GET_TEXT_F(MSG_PARK_FAILED)));
   rtscheck.RTS_SndData(thermalManager.temp_hotend[0].celsius, HEAD0_CURRENT_TEMP_VP);
   rtscheck.RTS_SndData(thermalManager.temp_hotend[0].target, HEAD0_SET_TEMP_VP);

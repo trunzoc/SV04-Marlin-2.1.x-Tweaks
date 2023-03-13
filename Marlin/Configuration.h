@@ -661,7 +661,7 @@
 
 #if ENABLED(PIDTEMP)
   #define PID_DEBUG             // Print PID debug data to the serial port. Use 'M303 D' to toggle activation.
-  //#define PID_PARAMS_PER_HOTEND // Use separate PID parameters for each extruder (useful for mismatched extruders)
+  #define PID_PARAMS_PER_HOTEND // Use separate PID parameters for each extruder (useful for mismatched extruders)
                                   // Set/get with G-code: M301 E[extruder number, 0-2]
 
   #if ENABLED(PID_PARAMS_PER_HOTEND)
