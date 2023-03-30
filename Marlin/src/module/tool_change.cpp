@@ -848,6 +848,7 @@ void fast_line_to_current(const AxisEnum fr_axis) { _line_to_current(fr_axis, 0.
       case DXC_AUTO_PARK_MODE:    DEBUG_ECHOLNPGM("AUTO_PARK");    break;
       case DXC_DUPLICATION_MODE:  DEBUG_ECHOLNPGM("DUPLICATION");  break;
       case DXC_MIRRORED_MODE:     DEBUG_ECHOLNPGM("MIRRORED");     break;
+      case DXC_SINGLE_2:          DEBUG_ECHOLNPGM("SINGLE MODE 2"); break;
     }
 
     // Get the home position of the currently-active tool
@@ -1104,6 +1105,7 @@ void tool_change(const uint8_t new_tool, bool no_move/*=false*/) {
     UNUSED(no_move);
 
     if (new_tool >= MIXING_VIRTUAL_TOOLS)
+      SERIAL_ECHOLNPGM("invaild mixing_virtual_tools");
       return invalid_extruder_error(new_tool);
 
     #if MIXING_VIRTUAL_TOOLS > 1
@@ -1125,7 +1127,7 @@ void tool_change(const uint8_t new_tool, bool no_move/*=false*/) {
   #elif EXTRUDERS < 2
 
     UNUSED(no_move);
-
+    SERIAL_ECHOLNPGM("extruders less than 2");
     if (new_tool) invalid_extruder_error(new_tool);
     return;
 
@@ -1134,12 +1136,16 @@ void tool_change(const uint8_t new_tool, bool no_move/*=false*/) {
     planner.synchronize();
 
     #if ENABLED(DUAL_X_CARRIAGE)  // Only T0 allowed if the Printer is in DXC_DUPLICATION_MODE or DXC_MIRRORED_MODE
-      if (new_tool != 0 && idex_is_duplicating())
+      if (new_tool != 0 && idex_is_duplicating()) {
+         SERIAL_ECHOLNPGM("should only be T1 because we are duplicating");
          return invalid_extruder_error(new_tool);
+      }
     #endif
 
-    if (new_tool >= EXTRUDERS)
+    if (new_tool >= EXTRUDERS) {
+      SERIAL_ECHOLNPGM("new_tool >= EXTRUDERS");
       return invalid_extruder_error(new_tool);
+    }
 
     if (!no_move && homing_needed()) {
       no_move = true;

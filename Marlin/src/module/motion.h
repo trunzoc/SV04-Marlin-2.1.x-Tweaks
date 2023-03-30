@@ -583,7 +583,8 @@ void home_if_needed(const bool keeplev=false);
     DXC_FULL_CONTROL_MODE,
     DXC_AUTO_PARK_MODE,
     DXC_DUPLICATION_MODE,
-    DXC_MIRRORED_MODE
+    DXC_MIRRORED_MODE,
+    DXC_SINGLE_2 // added by John Carlson for the issue with host not knowing about single mode 2
   };
 
   extern DualXMode dual_x_carriage_mode;
@@ -595,7 +596,7 @@ void home_if_needed(const bool keeplev=false);
   extern celsius_t duplicate_extruder_temp_offset;  // Used in mode 2 & 3
   extern bool idex_mirrored_mode;                   // Used in mode 3
 
-  FORCE_INLINE bool idex_is_duplicating() { return dual_x_carriage_mode >= DXC_DUPLICATION_MODE; }
+  FORCE_INLINE bool idex_is_duplicating() { return (dual_x_carriage_mode >= DXC_DUPLICATION_MODE and dual_x_carriage_mode <= DXC_MIRRORED_MODE); } // updated by John Carlson so that mode 4 doesn't throw the error
    FORCE_INLINE bool dxc_is_parked() { return dual_x_carriage_mode >= DXC_AUTO_PARK_MODE; }
 
   float x_home_pos(const uint8_t extruder);

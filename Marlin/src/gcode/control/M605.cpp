@@ -61,6 +61,8 @@
    *             The temperature differential and initial X offset must be set with "M605 S2 X[offs] R[deg]",
    *             then followed by "M605 S3" to initiate mirrored movement.
    *
+   *   M605 S4 : (FULL_CONTROL) (Single Mode 2 for Sovol SV04) This is for host control so the code will know it has to use the single mode 2
+   * 
    *    M605 W  : IDEX What? command.
    *
    *    Note: the X axis should be homed after changing Dual X-carriage mode.
@@ -74,12 +76,25 @@
       dual_x_carriage_mode = (DualXMode)parser.value_byte();
       idex_set_mirrored_mode(false);
 
+      SERIAL_ECHOLNPGM("dualXPrintingModeStatus M605: ", dualXPrintingModeStatus);
+      SERIAL_ECHOLNPGM("dual_x_carriage_mode: ", dual_x_carriage_mode);
+
       switch (dual_x_carriage_mode) {
 
         case DXC_FULL_CONTROL_MODE:
+        case DXC_SINGLE_2:
           #if ENABLED(RTS_AVAILABLE)
             //SetExtruderMode(4, false);
-            dualXPrintingModeStatus = 0;
+            // changed by John Carlson to allow for host to know that M605 is supposed to use single mode 2 but set mode back to full control
+            if (dual_x_carriage_mode == 0) {
+              dualXPrintingModeStatus = 0;
+              SERIAL_ECHOLNPGM("single mode1: ");
+            } else if  (dual_x_carriage_mode == 4) {
+              dualXPrintingModeStatus = 4;
+              SERIAL_ECHOLNPGM("single mode2: ");
+              save_dual_x_carriage_mode = dualXPrintingModeStatus;
+              //dual_x_carriage_mode = DXC_FULL_CONTROL_MODE;
+            }
           #endif
           break;
         case DXC_AUTO_PARK_MODE:

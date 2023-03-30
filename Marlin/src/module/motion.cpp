@@ -1339,7 +1339,9 @@ FORCE_INLINE void segment_idle(millis_t &next_idle_ms) {
     if (active_extruder_parked) {
       switch (dual_x_carriage_mode) {
 
-        case DXC_FULL_CONTROL_MODE: break;
+        case DXC_SINGLE_2:
+        case DXC_FULL_CONTROL_MODE: 
+          break;
 
         case DXC_AUTO_PARK_MODE: {
           if (current_position.e == destination.e) {

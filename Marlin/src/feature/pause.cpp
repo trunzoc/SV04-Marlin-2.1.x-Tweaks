@@ -577,7 +577,7 @@ void wait_for_confirmation(const bool is_reload/*=false*/, const int8_t max_beep
 
       TERN_(HAS_RESUME_CONTINUE, wait_for_user_response(0, true)); // Wait for LCD click or M108
 
-      queue.enqueue_now_P(PSTR("M117 Reheating..."));
+      //queue.enqueue_now_P(PSTR("M117 Reheating..."));
 
       TERN_(HOST_PROMPT_SUPPORT, hostui.prompt_do(PROMPT_INFO, GET_TEXT_F(MSG_REHEATING)));
 
@@ -599,7 +599,7 @@ void wait_for_confirmation(const bool is_reload/*=false*/, const int8_t max_beep
 
       HOTEND_LOOP() thermalManager.heater_idle[e].start(nozzle_timeout);
 
-      queue.enqueue_now_P(PSTR("M117 Reheat Done."));
+      //queue.enqueue_now_P(PSTR("M117 Reheat Done."));
       rtscheck.RTS_SndData(ExchangePageBase + 8, ExchangepageAddr);
 
       TERN_(HOST_PROMPT_SUPPORT, hostui.prompt_do(PROMPT_USER_CONTINUE, GET_TEXT_F(MSG_REHEATDONE), FPSTR(CONTINUE_STR)));
@@ -613,7 +613,7 @@ void wait_for_confirmation(const bool is_reload/*=false*/, const int8_t max_beep
     }
     idle_no_sleep();
   }
-  SERIAL_ECHOLNPGM("End Wait for user.");
+  //SERIAL_ECHOLNPGM("End Wait for user.");
   TERN_(DUAL_X_CARRIAGE, set_duplication_enabled(saved_ext_dup_mode, saved_ext));
 }
 
@@ -678,7 +678,7 @@ void resume_print(const_float_t slow_load_length/*=0*/, const_float_t fast_load_
 
   // Retract to prevent oozing
   unscaled_e_move(-(PAUSE_PARK_RETRACT_LENGTH), feedRate_t(PAUSE_PARK_RETRACT_FEEDRATE));
-  SERIAL_ECHOLNPGM("check for home");
+  //SERIAL_ECHOLNPGM("check for home");
   if (!axes_should_home()) {
     // Move XY back to saved position
     destination.set(resume_position.x, resume_position.y, current_position.z, current_position.e);
