@@ -87,6 +87,9 @@ extern int power_off_type_yes;
 #define E1_SET_FLOW_VP                       0X1106
 #define E0_SET_FAN_VP                        0x1107
 #define E1_SET_FAN_VP                       0x1108
+#define X_SET_STEP_VP                       0x1122
+#define Y_SET_STEP_VP                       0x1124
+#define Z_SET_STEP_VP                       0x1126
 
 #define AUTO_TRAM_1TEXT_VP                 0x1120
 
@@ -199,6 +202,9 @@ enum PROC_COM
   E1FlowKey,
   E0FanKey,
   E1FanKey,
+  XStepsKey,
+  YStepsKey,
+  ZStepsKey,
   ChangeFilamentKey,
   SettingScreenKey,
   SettingBackKey,
@@ -247,6 +253,9 @@ const unsigned long Addrbuf[] =
   0x1106,
   0x1107,
   0x1108,
+  0x1122,
+  0x1124,
+  0x1126,
   0x1109,
   0x103E,
   0x1040,

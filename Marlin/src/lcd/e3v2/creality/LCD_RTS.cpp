@@ -415,6 +415,9 @@ void RTSSHOW::RTS_Init()
   /***************transmit E-Steps to screen*******************/
   RTS_SndData(planner.settings.axis_steps_per_mm[3], E0_SET_STEP_VP);
   RTS_SndData(planner.settings.axis_steps_per_mm[4], E1_SET_STEP_VP);
+  RTS_SndData(planner.settings.axis_steps_per_mm[0], X_SET_STEP_VP);
+  RTS_SndData(planner.settings.axis_steps_per_mm[1], Y_SET_STEP_VP);
+  RTS_SndData(planner.settings.axis_steps_per_mm[2], Z_SET_STEP_VP);
   RTS_SndData(planner.flow_percentage[0], E0_SET_FLOW_VP);
   RTS_SndData(planner.flow_percentage[1], E1_SET_FLOW_VP);
   RTS_SndData(thermalManager.fan_speed[0], E0_SET_FAN_VP);
@@ -1274,6 +1277,30 @@ void RTSSHOW::RTS_HandleData()
       RTS_SndData(StartSoundSet, SoundAddr);
       RTS_SndData(recdat.data[0], E1_SET_STEP_VP);
       break;
+
+    case XStepsKey:
+      sprintf_P(cmd, PSTR("M92 X%d"), recdat.data[0]);
+      queue.enqueue_now_P(cmd);
+      queue.enqueue_now_P(PSTR("M500"));
+      RTS_SndData(StartSoundSet, SoundAddr);
+      RTS_SndData(recdat.data[0], X_SET_STEP_VP);
+      break;
+
+    case YStepsKey:
+      sprintf_P(cmd, PSTR("M92 Y%d"), recdat.data[0]);
+      queue.enqueue_now_P(cmd);
+      queue.enqueue_now_P(PSTR("M500"));
+      RTS_SndData(StartSoundSet, SoundAddr);
+      RTS_SndData(recdat.data[0], Y_SET_STEP_VP);
+      break;
+
+    case ZStepsKey:
+      sprintf_P(cmd, PSTR("M92 Z%d"), recdat.data[0]);
+      queue.enqueue_now_P(cmd);
+      queue.enqueue_now_P(PSTR("M500"));
+      RTS_SndData(StartSoundSet, SoundAddr);
+      RTS_SndData(recdat.data[0], Z_SET_STEP_VP);
+      break;
     // end updating for e-steps
     // added by John Carlson for updating flow
     case E0FlowKey:
@@ -1315,6 +1342,31 @@ void RTSSHOW::RTS_HandleData()
       }
       break;
     // end updating for fan speed
+
+    case ZOffsetKey: // manual type zoffset
+      SERIAL_ECHOLNPGM("ZOffsetKey Value: ", recdat.data[0]);
+      float tmp_zprobe_offset;
+
+      if (recdat.data[0] >= 32768)
+      {
+        tmp_zprobe_offset = (recdat.data[0] - 65536) / 100.0;
+      }
+      else
+      {
+        tmp_zprobe_offset = (recdat.data[0]) / 100.0;
+      }
+      last_zoffset = zprobe_zoffset;
+      //SERIAL_ECHOLNPGM("Last ZOffset: ", last_zoffset);
+      if (WITHIN((tmp_zprobe_offset), Z_PROBE_OFFSET_RANGE_MIN, Z_PROBE_OFFSET_RANGE_MAX))
+      {
+        zprobe_zoffset = tmp_zprobe_offset;
+        //SERIAL_ECHOLNPGM("Add babbystep: ", tmp_zprobe_offset - last_zoffset);
+        babystep.add_mm(Z_AXIS, tmp_zprobe_offset - last_zoffset);
+        probe.offset.z = zprobe_zoffset;
+      }
+      RTS_SndData(probe.offset.z * 100, AUTO_BED_LEVEL_ZOFFSET_VP);
+
+      break;
 
     case ChangeFilamentKey: //FILAMENT_RUNOUT_SCRIPT
       char cmdF[MAX_CMD_SIZE+16];
